@@ -292,13 +292,13 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 		if extended:	efd = np.vstack(efd)
 
 		if extended:
-			os.system(matching + " -v -s " + splx + "_extended.txt " + splx + "_homotopy.txt " + splx + "_vines_")
+			os.system(matching + " -v -s " + splx + "_extended.txt " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
 			os.system("rm " + splx + "_extended.txt")
 		else:
-			if essential:	os.system(matching + " -v " + splx + " " + splx + "_homotopy.txt " + splx + "_vines_")
-			else:	os.system(matching + " -v -s " + splx + " " + splx + "_homotopy.txt " + splx + "_vines_")
+			if essential:	os.system(matching + " -v " + splx + " " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
+			else:	os.system(matching + " -v -s " + splx + " " + splx + "_homotopy.txt " + splx + "_vines") # >/dev/null")
 
-		vineo = open(splx + "_vines_" + str(homology) + ".vin", "r")
+		vineo = open(splx + "_vines" + str(homology) + ".vin", "r")
 		V = vineo.readlines()
 		vineo.close()
 
@@ -502,10 +502,10 @@ def interlevelsets_multipersistence(matching, simplextree, filters, basepoint=No
 
 		vinef.close()
 
-		if essential:	os.system(matching + " -v " + splx + " " + splx + "_homotopy.txt " + splx + "_vines_")
-		else:	os.system(matching + " -v -s " + splx + " " + splx + "_homotopy.txt " + splx + "_vines_")
+		if essential:	os.system(matching + " -v " + splx + " " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
+		else:	os.system(matching + " -v -s " + splx + " " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
 
-		vineo = open(splx + "_vines_" + str(homology) + ".vin", "r")
+		vineo = open(splx + "_vines" + str(homology) + ".vin", "r")
 		V = vineo.readlines()
 		vineo.close()
 
