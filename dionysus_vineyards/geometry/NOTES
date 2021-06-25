@@ -1,0 +1,69 @@
+== Predicates/Constructions
+  * circumsphere, side of circumsphere
+  * barycentric coordinates
+  * degenerate simplex
+  * projection on a k-flat, squared distance to the k-flat
+  * signed square distance to an oriented (d-1)-flat (?)
+
+
+== Computing circumcenter and circumradius of a k-simplex in d dimensions.
+ 
+  * Ken Clarkson's Gram-Schmidt-based algorithm works perfectly over any field. 
+    The idea is as follows. 
+    
+    Given points p_i, the circumcenter c satisfies (p_i-c)^2 = r^2.  By
+    translation, we can assume that some p_i is at the origin, so that c^c=r^2,
+    and that equation becomes p_i \cdot c - p_i^2/2 = 0.  That is, [c -1/2] is
+    normal to [p_i p_i^2].  Also, c must be an affine combination of the p_i,
+    so if we start with a point [c' 0] with c' in the affine hull of the p_i,
+    and remove all multiples of all [p_i p_i^2] from it, via Gram-Schmidt for
+    example, and then scale the result so that the last entry is -1/2, we get
+    c (alternatively we can start with [0 1]). Note that if the simplex is 
+    degenerate (its affine hull is less than k-dimensional), the last entry of 
+    c is 0.
+
+      P = {p_0, ..., p_k}
+      p'_i = p_i - p_0                  # make p_0 the origin
+      p''_i = [p'_i p'_i^2]             # lift the points
+      c' = 0                            # c is in the affine hull of p'_i
+      c'' = [c' 1]                      # c'' is not in the affine hull of p'_i^2
+
+      for i = 1 to k:                   # create an orthogonal basis for aff(p''_i)
+        a''_i = p''_i
+        for j = k-1 downto 1:
+          a''_i -= a''_j * (a''_i \cdot c''_j)/c''_j^2
+      
+      for i = 1 to k:
+        c'' -= a''_i * (c'' \cdot a''_i) / (a''_i^2)
+      c' = c''[1..d]/(-2 * c''[d+1])    # scale c'' down
+
+  * Ulfar Erlingsson's, Erich Kaltofen's and David Musser's "Generic 
+    Gram-Schmidt Orthogonalization by Exact Division" (ISSAC'96) gives an 
+    algorithm to compute Gram-Schmidt for vector space with integral domain 
+    coefficients. I need to understand the paper better to see the advantages 
+    over normalizing rationals at every step of the computation above 
+    (the paper's introduction says that it avoids "costly GCD computations").
+
+  * Using QR decomposition (or any other orthogonal decomposition), and 
+    then using the formula of the circumsphere on the matrix R (which is 
+    just the simplex rotated into a k-dimensional space):
+
+    * Only (d-2) determinants of a k by k matrix are required which is nice.
+    
+    * All (implemented) computation of the QR decomposition that I have found 
+      so far requires square roots (for norms), divisions, and often
+      comparisons.  While divisions are acceptable, square roots and
+      comparisons aren't.
+
+    * There is a string of papers in late 80s, early 90s on square root free 
+      and division free algorithms for QR decomposition out of VLSI community.
+      There is a paper that claims to put all such techniques into one
+      framework. There is also a paper that says that all such techniques don't
+      work, and square root implementation needs to be reconsidered.  (authors
+      to look up if searching for these papers are K.J.R. Liu and E.
+      Frantzeskakis)
+
+  * Using the formulas from Herbert's Weighted Alpha Shapes paper which are 
+    derived from formulas of the planes that are lifted Voronoi cells. This 
+    approach requires (d-k)*(d+2) determinants of k by k matrices, which is not 
+    great.

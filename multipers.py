@@ -14,6 +14,9 @@ import random
 from concurrent import futures
 from joblib import Parallel, delayed
 
+#from custom_vineyards import ls_vineyards as lsvine
+from dionysus_vineyards import ls_vineyards as lsvine
+
 def DTM(X,query_pts,m):
 	"""
 	Code for computing distance to measure. Taken from https://github.com/GUDHI/TDA-tutorial/blob/master/Tuto-GUDHI-DTM-filtrations.ipynb
@@ -132,7 +135,7 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 	Code for computing multiparameter sublevel set persistence. 
 
 	Inputs:
-		matching: function for computing matchings. Either a Python callable (accepting two diagrams as inputs and returning a partial matching) or a path to a vineyards executable
+		matching: function for computing matchings. Either a Python callable (accepting two diagrams as inputs and returning a partial matching) or the string "vineyards", in which case the vineyards algorithm from Dionysus is used
 		simplextree: input simplex tree. Either a path to a simplicial complex file with Dionysus format (https://www.mrzv.org/software/dionysus/examples/pl-vineyard.html), or a simplex tree
 		filters: Filtration values. Either a path to a filtration value file, with Dionysus format (https://www.mrzv.org/software/dionysus/examples/pl-vineyard.html), or a Numpy array
 		homology: homological dimension
@@ -168,7 +171,7 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 					splx.insert([int(v) for v in lline])
 			stfile.close()
 	elif type(simplextree) == gd.SimplexTree:
-		if type(matching) == str:
+		if matching == 'vineyards':
 			with open("simplextree", "w") as stfile:
 				for (s,_) in simplextree.get_filtration():	stfile.write(" ".join([str(v) for v in s]) + "\n")
 			stfile.close()
@@ -245,7 +248,7 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 	NF = np.vstack(NF)
 		
 
-	if type(matching) == str:
+	if matching == "vineyards":
 
 		if extended:
 			stbase_ext, stbase = gd.SimplexTree(), gd.SimplexTree()
@@ -267,47 +270,32 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 				cplxe.close()
 			efd = []
 
-		vinef = open(splx + "_homotopy.txt", "w")
-
+		NNF = []
 		for i in range(len(frames)):
-
-			new_f = NF[i,:]
 
 			if extended:
 				st = gd.SimplexTree()
 				for (s,_) in stbase.get_filtration():	st.insert(s, -1e10)
-				for pt in range(n_pts):	st.assign_filtration([pt], new_f[pt])
+				for pt in range(n_pts):	st.assign_filtration([pt], NF[i,pt])
 				st.make_filtration_non_decreasing()
 				st.extend_filtration()
 				bary = barycentric_subdivision(st, [(s, st.filtration(s)) for (s, _) in list_splx])
-				for v in range(bary.num_vertices()):	vinef.write(str(bary.filtration([v])) + " ")
-				efd.append([[min(new_f), max(new_f)]])
-			else:
-				for pt in range(n_pts):	vinef.write(str(new_f[pt]) + " ")
+				new_f = np.array([bary.filtration([v]) for v in range(bary.num_vertices())])
+				efd.append([[min(NF[i,:]), max(NF[i,:])]])
+			else:	new_f = NF[i,:]
+			NNF.append(new_f[None,:])
 
-			vinef.write("\n")
-
-		vinef.close()
+		NNF = np.vstack(NNF)
 
 		if extended:	efd = np.vstack(efd)
 
 		if extended:
-			os.system(matching + " -v -s " + splx + "_extended.txt " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
-			os.system("rm " + splx + "_extended.txt")
+			VS = lsvine(NNF, (splx + "_extended.txt").encode('utf-8'), 1)
 		else:
-			if essential:	os.system(matching + " -v " + splx + " " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
-			else:	os.system(matching + " -v -s " + splx + " " + splx + "_homotopy.txt " + splx + "_vines") # >/dev/null")
+			if essential:	VS = lsvine(NNF, splx.encode('utf-8'), 0)
+			else:	VS = lsvine(NNF, splx.encode('utf-8'), 1)
 
-		vineo = open(splx + "_vines" + str(homology) + ".vin", "r")
-		V = vineo.readlines()
-		vineo.close()
-
-		Vs = []
-		for line in V:
-			coords = line[:-2].split(" ")
-			if len(coords) > 3:
-				seq = [float(v) for v in coords]
-				Vs.append(seq)
+		Vs = VS[homology]
 
 		decomposition = []
 		for seq in Vs:
@@ -491,30 +479,20 @@ def interlevelsets_multipersistence(matching, simplextree, filters, basepoint=No
 		NF.append([new_f])
 	NF = np.vstack(NF)
 
-	if type(matching) == str:
+	if matching == 'vineyards':
 
-		vinef = open(splx + "_homotopy.txt", "w")
+		#vinef = open(splx + "_homotopy.txt", "w")
 
+		NNF = []
 		for i in range(len(frames)):
-			new_f = NF[i,:]
-			for pt in range(n_pts):	vinef.write(str(new_f[pt]) + " ")
-			vinef.write("\n")
+			NNF.append(NF[i,:][None,:])			
+		NNF = np.vstack(NNF)
+		
+		if essential:	VS = lsvine(NNF, splx.encode('utf-8'), 0)
+		else:	VS = lsvine(NNF, splx.encode('utf-8'), 1)
 
-		vinef.close()
+		Vs = VS[homology]
 
-		if essential:	os.system(matching + " -v " + splx + " " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
-		else:	os.system(matching + " -v -s " + splx + " " + splx + "_homotopy.txt " + splx + "_vines >/dev/null")
-
-		vineo = open(splx + "_vines" + str(homology) + ".vin", "r")
-		V = vineo.readlines()
-		vineo.close()
-
-		Vs = []
-		for line in V:
-			coords = line[:-2].split(" ")
-			if len(coords) > 3:
-				seq = [float(v) for v in coords]
-				Vs.append(seq)
 
 		decomposition = []
 		for seq in Vs:
