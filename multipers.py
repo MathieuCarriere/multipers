@@ -14,7 +14,6 @@ import random
 from concurrent import futures
 from joblib import Parallel, delayed
 
-#from custom_vineyards import ls_vineyards as lsvine
 from dionysus_vineyards import ls_vineyards as lsvine
 
 def DTM(X,query_pts,m):
