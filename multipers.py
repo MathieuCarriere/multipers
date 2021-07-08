@@ -35,7 +35,7 @@ def recursive_insert(st, base_splx, splx, name_dict, filt):
 			coface = splx[:idx] + splx[idx+1:]
 			recursive_insert(st, base_splx + [name_dict[tuple(splx)]], coface, name_dict, max(filt, st.filtration([name_dict[tuple(coface)]])))
 
-def barycentric_subdivision(st, list_splx=None, use_sqrt=False):
+def barycentric_subdivision(st, list_splx=None, use_sqrt=False, use_mean=False):
 	"""
 	Code for computing the barycentric subdivision of a Gudhi simplex tree.
 	
@@ -43,6 +43,7 @@ def barycentric_subdivision(st, list_splx=None, use_sqrt=False):
 		st: input simplex tree
 		list_splx: a list of simplices of st (useful if you want to give specific names for the barycentric subdivision simplices)
 		use_sqrt: whether to take the square root for the barycentric subdivision filtration values (useful if st was computed from Gudhi AlphaComplex for instance)
+		use_mean: whether to take the mean of the vertices for the new vertex value (useful for refining lower star for instance)
 	Outputs:
 		bary: barycentric subdivision of st
 	"""
@@ -53,6 +54,7 @@ def barycentric_subdivision(st, list_splx=None, use_sqrt=False):
 	count = 0
 	for splx, f in splxs:
 		if use_sqrt:	bary.insert([count], np.sqrt(f))
+		elif use_mean:	bary.insert([count], np.mean([st.filtration([v]) for v in splx]))
 		else:	bary.insert([count], f)
 		bary_splx[tuple(splx)] = count
 		count += 1
@@ -208,7 +210,7 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 			xAlpha, yAlpha = min(xMt, xmt + (yMt-ymt)/np.tan(frames[i])), min(yMt, ymt + (xMt-xmt)*np.tan(frames[i]))
 			lines.append(np.array([[xalpha, yalpha, xAlpha, yAlpha]]))
 
-	if corner == "ur":	
+	if corner == "ur":
 		midal = np.arctan((xMt-xmt)/(yMt-ymt))
 		frames = np.concatenate([  np.arctan((xMt-np.linspace(start=xMt-epsilon, stop=xmt, num=int(num_lines/2)))/(yMt-ymt)),
 	                                   np.arctan((xMt-xmt)/(yMt-np.linspace(start=ymt, stop=yMt-epsilon, num=int(num_lines/2))))  ])
@@ -600,13 +602,13 @@ def intersect_boundaries(summand, bnds, visu=False):
 	Ts = np.hstack([ np.multiply( xm-summand[:,0:1], 1./(summand[:,1:2]-summand[:,0:1]) ),
 			 np.multiply( xM-summand[:,0:1], 1./(summand[:,1:2]-summand[:,0:1]) ),
 			 np.multiply( ym-summand[:,2:3], 1./(summand[:,3:4]-summand[:,2:3]) ),
-			 np.multiply( yM-summand[:,2:3], 1./(summand[:,3:4]-summand[:,2:3]) ) ])		
+			 np.multiply( yM-summand[:,2:3], 1./(summand[:,3:4]-summand[:,2:3]) ) ])
 	Ts = np.hstack([ np.minimum(Ts[:,0:1], Ts[:,1:2]), np.maximum(Ts[:,0:1], Ts[:,1:2]), np.minimum(Ts[:,2:3], Ts[:,3:4]), np.maximum(Ts[:,2:3], Ts[:,3:4]) ])
 	Ts = np.hstack([ np.maximum(Ts[:,0:1], Ts[:,2:3]), np.minimum(Ts[:,1:2], Ts[:,3:4]) ])
 	good_idxs = np.argwhere(Ts[:,1]-Ts[:,0] > 0.)[:,0]
 	summand, Ts = summand[good_idxs], Ts[good_idxs]
 	good_idxs = np.argwhere(Ts[:,0] < 1.)[:,0]
-	summand, Ts = summand[good_idxs], Ts[good_idxs]		
+	summand, Ts = summand[good_idxs], Ts[good_idxs]
 	good_idxs = np.argwhere(Ts[:,1] > 0.)[:,0]
 	summand, Ts = summand[good_idxs], Ts[good_idxs]
 	Ts = np.hstack([  np.maximum(Ts[:,0:1], np.zeros(Ts[:,0:1].shape)), np.minimum(Ts[:,1:2], np.ones(Ts[:,0:1].shape))  ])
@@ -761,13 +763,13 @@ def multipersistence_image(decomposition, bnds=None, resolution=[100,100], retur
 			Zsummand = distlines.min(axis=2)
 			arglines = np.argmin(distlines, axis=2)
 			weightlines = W[arglines]
-			Zsummand = np.multiply(Zsummand, weightlines)
+			#Zsummand = np.multiply(Zsummand, weightlines)
 			if return_raw:
 				lw.append(weight)
 				lsum.append(Zsummand)
-			else:	
+			else:
 				weight = weight**power
-				Zfinal += weight * np.exp(-Zsummand**2/bandwidth)
+				Zfinal += weight * np.multiply(np.exp(-Zsummand**2/bandwidth), weightlines)
 
 	output = [lw, lsum] if return_raw else Zfinal
 	return output
@@ -849,7 +851,7 @@ def multipersistence_landscape(decomposition, bnds, delta, resolution=[100,100],
 
 			tris = np.vstack( [ summand[np.argwhere(summand[:,4] == int(al))[:,0]] for summand in decomposition ] )
 
-			if len(tris) > 0:	
+			if len(tris) > 0:
 
 				tris = intersect_boundaries(tris, bnds)
 				P1x, P2x, P1y, P2y = tris[:,0:1], tris[:,1:2], tris[:,2:3], tris[:,3:4]
@@ -864,7 +866,7 @@ def multipersistence_landscape(decomposition, bnds, delta, resolution=[100,100],
 				output = np.where( (scal1 >= 0) & (scal1 < np.sqrt(2)*delta/2) & (scal2 >= 0) & (scal2 <= bars), np.minimum(scal2, bars-scal2), np.zeros(scal2.shape))
 				LS = np.reshape(output, [X.shape[0], X.shape[1], len(P1x)])
 
-				if k is None:	
+				if k is None:
 					if return_raw:	final.append([LS, bars])
 					else:	final.append( np.multiply(LS, np.reshape(bars**power, [1,1,-1])).sum(axis=2) )
 				else:
