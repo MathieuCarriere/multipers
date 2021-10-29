@@ -174,7 +174,10 @@ def sublevelsets_multipersistence(matching, simplextree, filters, homology=0, nu
 	elif type(simplextree) == gd.SimplexTree:
 		if matching == 'vineyards':
 			with open("simplextree", "w") as stfile:
-				for (s,_) in simplextree.get_filtration():	stfile.write(" ".join([str(v) for v in s]) + "\n")
+				for (s,_) in simplextree.get_skeleton(0):	stfile.write(" ".join([str(v) for v in s]) + "\n")
+				for (s,_) in simplextree.get_filtration():
+					if len(s) > 1:
+						stfile.write(" ".join([str(v) for v in s]) + "\n")
 			stfile.close()
 			splx = "simplextree"
 		else:	splx = simplextree
@@ -436,7 +439,10 @@ def interlevelsets_multipersistence(matching, simplextree, filters, basepoint=No
 	elif type(simplextree) == gd.SimplexTree:
 		if type(matching) == str:
 			with open("simplextree", "w") as stfile:
-				for (s,_) in simplextree.get_filtration():	stfile.write(" ".join([str(v) for v in s]) + "\n")
+				for (s,_) in simplextree.get_skeleton(0):	stfile.write(" ".join([str(v) for v in s]) + "\n")
+				for (s,_) in simplextree.get_filtration():
+					if len(s) > 1:
+						stfile.write(" ".join([str(v) for v in s]) + "\n")
 			stfile.close()
 			splx = "simplextree"
 		else:	splx = simplextree
